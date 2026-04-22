@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher Evaluation — MIS Final Presentation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root {
+  --red:#8B2635;--red-mid:#c94055;--red-light:#f5e8ea;
+  --dark:#1a1a1a;--mid:#4a4a4a;--light:#f7f4f0;--border:#ddd8d0;
+  --score-5:#2d6a4f;--score-4:#52b788;--score-3:#c9a227;--score-2:#f4a261;--score-1:#e63946;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--light);color:var(--dark);min-height:100vh}
+
+/* LOGIN */
+.login-overlay{position:fixed;inset:0;background:rgba(20,10,10,0.85);display:flex;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(4px)}
+.login-box{background:white;border-radius:16px;padding:40px 48px;width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4)}
+.login-box h2{font-family:'DM Serif Display',serif;font-size:28px;color:var(--red);margin-bottom:8px}
+.login-box p{font-size:13px;color:#888;margin-bottom:28px}
+.login-box input{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:14px;transition:border-color 0.2s}
+.login-box input:focus{border-color:var(--red)}
+.login-box button{width:100%;padding:13px;background:var(--red);color:white;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background 0.2s}
+.login-box button:hover{background:var(--red-mid)}
+.login-error{color:var(--red);font-size:12px;margin-top:8px;display:none}
+
+/* HEADER */
+.header{background:var(--red);color:white;padding:32px 0 28px;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.06)}
+.header-inner{max-width:820px;margin:0 auto;padding:0 24px;position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between}
+.header-text .tag{display:inline-block;background:rgba(255,255,255,0.18);font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:10px}
+.header-text h1{font-family:'DM Serif Display',serif;font-size:clamp(22px,4vw,32px)}
+.header-text p{font-size:13px;opacity:0.8;margin-top:6px}
+.header-badge{background:rgba(255,255,255,0.15);padding:10px 18px;border-radius:10px;text-align:center;flex-shrink:0}
+.header-badge .badge-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;opacity:0.7}
+.header-badge .badge-value{font-family:'DM Serif Display',serif;font-size:28px}
+
+.container{max-width:820px;margin:0 auto;padding:28px 24px 60px}
+
+/* TABS */
+.tabs{display:flex;gap:4px;background:white;padding:6px;border-radius:12px;border:1px solid var(--border);margin-bottom:24px;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+.tab{flex:1;padding:10px;text-align:center;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;color:#888;border:none;background:none;font-family:'DM Sans',sans-serif}
+.tab.active{background:var(--red);color:white;box-shadow:0 2px 8px rgba(139,38,53,0.3)}
+
+/* GROUP CARDS */
+.group-card{background:white;border-radius:12px;margin-bottom:20px;border:1px solid var(--border);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.04);display:none}
+.group-card.active-tab{display:block}
+.group-header{background:var(--red);color:white;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.group-header .g-title{font-family:'DM Serif Display',serif;font-size:22px}
+.group-header .g-score{background:rgba(255,255,255,0.15);padding:4px 14px;border-radius:20px;font-size:13px}
+.group-header .g-score span{font-weight:700;font-size:17px}
+
+/* CRITERIA */
+.criteria-row{padding:16px 24px;border-bottom:1px solid #f0ece6}
+.criteria-row:last-child{border-bottom:none}
+.crit-top{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start}
+.crit-name{font-size:14px;font-weight:600;margin-bottom:2px}
+.crit-weight{font-size:11px;color:var(--red);font-weight:600}
+.score-options{display:flex;gap:7px}
+.score-btn{flex:1;min-width:60px;padding:8px 4px 6px;border:1.5px solid var(--border);border-radius:8px;background:white;cursor:pointer;text-align:center;transition:all 0.15s;position:relative}
+.score-btn input{position:absolute;opacity:0;width:0;height:0}
+.score-btn .sn{display:block;font-size:18px;font-weight:700;line-height:1;margin-bottom:2px}
+.score-btn .sl{display:block;font-size:9px;font-weight:500;text-transform:uppercase;color:#888;letter-spacing:0.3px}
+.score-btn[data-score="5"]:hover,.score-btn[data-score="5"].sel{border-color:var(--score-5);background:#edf7f2}
+.score-btn[data-score="5"]:hover .sn,.score-btn[data-score="5"].sel .sn{color:var(--score-5)}
+.score-btn[data-score="4"]:hover,.score-btn[data-score="4"].sel{border-color:var(--score-4);background:#f0faf5}
+.score-btn[data-score="4"]:hover .sn,.score-btn[data-score="4"].sel .sn{color:var(--score-4)}
+.score-btn[data-score="3"]:hover,.score-btn[data-score="3"].sel{border-color:var(--score-3);background:#fdf8e7}
+.score-btn[data-score="3"]:hover .sn,.score-btn[data-score="3"].sel .sn{color:var(--score-3)}
+.score-btn[data-score="2"]:hover,.score-btn[data-score="2"].sel{border-color:var(--score-2);background:#fef4ec}
+.score-btn[data-score="2"]:hover .sn,.score-btn[data-score="2"].sel .sn{color:var(--score-2)}
+.score-btn[data-score="1"]:hover,.score-btn[data-score="1"].sel{border-color:var(--score-1);background:#fdeced}
+.score-btn[data-score="1"]:hover .sn,.score-btn[data-score="1"].sel .sn{color:var(--score-1)}
+.rubric-hint{margin-top:8px;min-height:24px}
+.rubric-hint-text{display:none;font-size:11.5px;line-height:1.5;padding:5px 10px;border-radius:0 6px 6px 0;border-left:3px solid #ccc}
+.rubric-hint-text.vis{display:block}
+.rubric-hint-text.s5{border-color:var(--score-5);background:#edf7f2;color:#1e4d38}
+.rubric-hint-text.s4{border-color:var(--score-4);background:#f0faf5;color:#2d6a4f}
+.rubric-hint-text.s3{border-color:var(--score-3);background:#fdf8e7;color:#7a5c10}
+.rubric-hint-text.s2{border-color:var(--score-2);background:#fef4ec;color:#9a4a10}
+.rubric-hint-text.s1{border-color:var(--score-1);background:#fdeced;color:#8b1a22}
+
+/* TEACHER NOTES */
+.notes-section{margin:4px 24px 20px;padding:16px;background:#f9f7ff;border:1.5px solid #ddd0f0;border-radius:10px}
+.notes-label{font-size:12px;font-weight:700;color:#5a3a8a;letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px}
+.notes-input{width:100%;padding:10px 14px;border:1.5px solid #d8ceed;border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--dark);background:white;resize:vertical;min-height:80px;outline:none;transition:border-color 0.2s;line-height:1.5}
+.notes-input:focus{border-color:#7c4dbc}
+
+/* SCORE BAR */
+.score-bar-row{background:#f9f6f2;border-top:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:14px}
+.score-bar-row .lbl{font-size:12px;color:#888;font-weight:500}
+.bar-wrap{flex:1;height:6px;background:#e8e4de;border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;background:var(--red);border-radius:3px;transition:width 0.3s;width:0%}
+.score-val{font-size:16px;font-weight:700;color:var(--red);min-width:60px;text-align:right}
+
+/* OVERALL PROGRESS */
+.progress-card{background:white;border-radius:12px;padding:18px 24px;margin-bottom:20px;border:1px solid var(--border);display:flex;align-items:center;gap:20px}
+.prog-text{flex:1}
+.prog-text .pt{font-size:13px;font-weight:600;color:var(--dark);margin-bottom:4px}
+.prog-text .ps{font-size:12px;color:#888}
+.prog-bar-wrap{width:200px;height:8px;background:#eee;border-radius:4px;overflow:hidden}
+.prog-bar-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--red-mid));border-radius:4px;transition:width 0.4s;width:0%}
+.prog-count{font-size:22px;font-weight:700;color:var(--red);min-width:50px;text-align:right}
+
+/* SUBMIT */
+.submit-area{text-align:center;margin-top:32px}
+.submit-btn{background:var(--red);color:white;border:none;padding:15px 44px;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;border-radius:50px;cursor:pointer;box-shadow:0 4px 16px rgba(139,38,53,0.3);transition:all 0.2s}
+.submit-btn:hover{background:var(--red-mid);transform:translateY(-1px)}
+.submit-btn:disabled{background:#aaa;box-shadow:none;transform:none;cursor:not-allowed}
+.submit-note{margin-top:10px;font-size:12px;color:#aaa}
+.spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;margin-right:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.success-banner{display:none;background:#edf7f2;border:2px solid var(--score-5);border-radius:12px;padding:24px;text-align:center;margin-top:24px}
+.success-banner h3{color:var(--score-5);font-size:20px;margin-bottom:8px}
+.success-banner p{color:#2d6a4f;font-size:14px}
+
+@media(max-width:600px){
+  .crit-top{grid-template-columns:1fr;gap:8px}
+  .score-btn .sl{display:none}
+  .tabs{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <h2>Instructor Access</h2>
+    <p>Please enter the admin password to access the teacher evaluation form.</p>
+    <input type="password" id="pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Login</button>
+    <div class="login-error" id="login-error">Incorrect password. Please try again.</div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-text">
+      <div class="tag">Instructor View — MIS</div>
+      <h1>Teacher Evaluation Form</h1>
+      <p>Your scores count for <strong>70%</strong> of each group's final grade.</p>
+    </div>
+    <div class="header-badge">
+      <div class="badge-label">Weight</div>
+      <div class="badge-value">70%</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- PROGRESS -->
+  <div class="progress-card">
+    <div class="prog-text">
+      <div class="pt">Groups Evaluated</div>
+      <div class="ps">Complete all 10 groups before submitting</div>
+    </div>
+    <div class="prog-bar-wrap"><div class="prog-bar-fill" id="prog-fill"></div></div>
+    <div class="prog-count" id="prog-count">0 / 10</div>
+  </div>
+
+  <!-- TABS (group selector) -->
+  <div class="tabs" id="group-tabs"></div>
+
+  <!-- GROUP CARDS -->
+  <div id="groups-container"></div>
+
+  <div class="submit-area">
+    <button class="submit-btn" id="submit-btn" onclick="submitTeacher()">Submit All Scores</button>
+    <p class="submit-note">All 10 groups must be scored and have teacher notes before submitting.</p>
+  </div>
+  <div class="success-banner" id="success-banner">
+    <h3>✅ Teacher Scores Submitted!</h3>
+    <p>All evaluations have been saved. You can now view the final results in the admin dashboard.</p>
+  </div>
+</div>
+
+<script>
+// ── CONFIG (same as shared.js) ────────────────────────────────────
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+const ADMIN_PASSWORD  = 'YOUR_ADMIN_PASSWORD_HERE';
+const TOTAL_GROUPS    = 10;
+
+const CRITERIA = [
+  { id:'pi',  name:'Problem Identification',   weight:20, rubric:{5:"Accurately identifies company's current problems; thorough analysis; captures core pain points",4:'Correctly describes main problems; clear and reasonable analysis',3:'Describes basic problems, but analysis lacks depth',2:'Problem description is inaccurate or superficial',1:'Fails to identify problems or seriously misjudges situation'}},
+  { id:'se',  name:'Solution Effectiveness',   weight:20, rubric:{5:'Solution effectively addresses problems; concrete and feasible; significant expected outcomes',4:'Solution addresses main problems; feasible',3:'Solution is basically feasible, but limited effectiveness',2:'Solution effectiveness unclear or low feasibility',1:'Solution is ineffective or completely infeasible'}},
+  { id:'sf',  name:'Solution Feasibility',     weight:15, rubric:{5:'Fully considers company resources, costs, technology, and organizational conditions; comprehensive planning',4:'Considers main constraints; reasonable planning',3:'Considers some conditions, but incomplete',2:'Lacks practical considerations; unrealistic planning',1:'Completely unreasonable or ignores important constraints'}},
+  { id:'isd', name:'IS Design',                weight:15, rubric:{5:'Complete system architecture; clear functional modules; appropriate technology choices; demonstrates innovative thinking',4:'Reasonable system design; clear functions',3:'Basic system architecture, but lacks details',2:'System design is unclear or incomplete',1:'Lacks system design or contains major errors'}},
+  { id:'ca',  name:'Competitiveness Analysis', weight:10, rubric:{5:'Clearly argues how solution enhances competitiveness; links business value to strategic objectives',4:'Explains positive impact of solution on competitiveness',3:'Mentions competitiveness improvement but weak argumentation',2:'Fails to effectively link competitiveness enhancement',1:'No discussion or illogical arguments'}},
+  { id:'qa',  name:'Q&A Response',             weight:10, rubric:{5:'Accurately understands questions; in-depth and complete answers; demonstrates professional knowledge and adaptability',4:'Correctly answers questions; clear expression',3:'Basically answers questions, but lacks depth',2:'Unclear answers or deviates from questions',1:'Unable to answer or provides incorrect responses'}},
+  { id:'pq',  name:'Presentation Quality',     weight:5,  rubric:{5:'Complete presentation structure; professional visual design; clear and fluent verbal expression',4:'Well-organized presentation; clear delivery',3:'Presentation is basically complete, but some content unclear',2:'Loosely organized presentation or poor delivery',1:'Chaotic presentation or serious delivery problems'}},
+  { id:'tm',  name:'Time Management',          weight:5,  rubric:{5:'Perfect time control; well-balanced sections; finishes on time',4:'Good time control; slightly over or under time (±1 min)',3:'Acceptable time control (over or under 1-3 minutes)',2:'Significantly over or under time (3-5 minutes)',1:'Seriously over time or severely insufficient content (5+ min)'}},
+];
+const SL = {5:'Excellent',4:'Good',3:'Satisfactory',2:'Need Impr.',1:'Failing'};
+
+// ── LOGIN ─────────────────────────────────────────────────────────
+function doLogin() {
+  const v = document.getElementById('pw-input').value;
+  if (v === ADMIN_PASSWORD) {
+    document.getElementById('login-overlay').style.display = 'none';
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+// ── BUILD UI ──────────────────────────────────────────────────────
+function buildUI() {
+  // Tabs
+  const tabsEl = document.getElementById('group-tabs');
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    const t = document.createElement('button');
+    t.className = 'tab' + (g===1?' active':'');
+    t.textContent = 'G'+g;
+    t.onclick = () => switchTab(g);
+    t.id = 'tab-'+g;
+    tabsEl.appendChild(t);
+  }
+
+  // Cards
+  const cont = document.getElementById('groups-container');
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    const card = document.createElement('div');
+    card.className = 'group-card' + (g===1?' active-tab':'');
+    card.id = 'gc-'+g;
+
+    const critHTML = CRITERIA.map(c => `
+      <div class="criteria-row">
+        <div class="crit-top">
+          <div><div class="crit-name">${c.name}</div><div class="crit-weight">${c.weight}%</div></div>
+          <div class="score-options">
+            ${[5,4,3,2,1].map(s=>`
+              <label class="score-btn" data-score="${s}" data-g="${g}" data-c="${c.id}" onclick="pick(this,${g},'${c.id}',${s})">
+                <input type="radio" name="t${g}_${c.id}" value="${s}">
+                <span class="sn">${s}</span><span class="sl">${SL[s]}</span>
+              </label>`).join('')}
+          </div>
+        </div>
+        <div class="rubric-hint"><div class="rubric-hint-text" id="rh-${g}-${c.id}"></div></div>
+      </div>`).join('');
+
+    card.innerHTML = `
+      <div class="group-header">
+        <span class="g-title">Group ${g}</span>
+        <span class="g-score">Score: <span id="ts-${g}">—</span> / 100</span>
+      </div>
+      <div>${critHTML}</div>
+      <div class="notes-section">
+        <div class="notes-label">📋 Instructor Notes</div>
+        <textarea class="notes-input" id="tnotes-${g}" placeholder="Add your evaluation notes, observations, or feedback for Group ${g}…" oninput="updateProgress()"></textarea>
+      </div>
+      <div class="score-bar-row">
+        <span class="lbl">Score</span>
+        <div class="bar-wrap"><div class="bar-fill" id="tb-${g}"></div></div>
+        <span class="score-val" id="tv-${g}">0 / 100</span>
+      </div>`;
+    cont.appendChild(card);
+  }
+}
+
+function switchTab(g) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.group-card').forEach(c=>c.classList.remove('active-tab'));
+  document.getElementById('tab-'+g).classList.add('active');
+  document.getElementById('gc-'+g).classList.add('active-tab');
+}
+
+function pick(el, g, cid, score) {
+  document.querySelectorAll('.score-btn[data-g="'+g+'"][data-c="'+cid+'"]').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  const c = CRITERIA.find(x=>x.id===cid);
+  const h = document.getElementById('rh-'+g+'-'+cid);
+  if (h&&c){ h.textContent='★ '+SL[score]+': '+c.rubric[score]; h.className='rubric-hint-text vis s'+score; }
+  updateTotal(g);
+  updateProgress();
+}
+
+function updateTotal(g) {
+  let total=0, filled=0;
+  CRITERIA.forEach(c=>{
+    const s=document.querySelector('.score-btn.sel[data-g="'+g+'"][data-c="'+c.id+'"]');
+    if(s){total+=parseInt(s.dataset.score)*c.weight/5;filled++;}
+  });
+  const done = filled===CRITERIA.length;
+  document.getElementById('ts-'+g).textContent = done ? Math.round(total) : '—';
+  document.getElementById('tv-'+g).textContent = done ? Math.round(total)+' / 100' : filled+'/'+CRITERIA.length+' done';
+  document.getElementById('tb-'+g).style.width = total+'%';
+  // Update tab indicator
+  const tab = document.getElementById('tab-'+g);
+  tab.textContent = done ? '✓ G'+g : 'G'+g;
+}
+
+function updateProgress() {
+  let done=0;
+  for(let g=1;g<=TOTAL_GROUPS;g++){
+    const allScored=CRITERIA.every(c=>document.querySelector('.score-btn.sel[data-g="'+g+'"][data-c="'+c.id+'"]'));
+    const hasNotes=(document.getElementById('tnotes-'+g)||{}).value?.trim();
+    if(allScored&&hasNotes) done++;
+  }
+  document.getElementById('prog-count').textContent=done+' / '+TOTAL_GROUPS;
+  document.getElementById('prog-fill').style.width=(done/TOTAL_GROUPS*100)+'%';
+}
+
+function submitTeacher() {
+  let missing=[];
+  for(let g=1;g<=TOTAL_GROUPS;g++){
+    const allScored=CRITERIA.every(c=>document.querySelector('.score-btn.sel[data-g="'+g+'"][data-c="'+c.id+'"]'));
+    const hasNotes=document.getElementById('tnotes-'+g).value.trim();
+    if(!allScored||!hasNotes) missing.push('Group '+g);
+  }
+  if(missing.length){ alert('Please complete scores and notes for:\n'+missing.join(', ')); return; }
+
+  const payload = { type:'teacher', timestamp:new Date().toISOString(), evaluations:[] };
+  for(let g=1;g<=TOTAL_GROUPS;g++){
+    const ev={group:g, scores:{}, total:0, notes:document.getElementById('tnotes-'+g).value.trim()};
+    CRITERIA.forEach(c=>{
+      const s=document.querySelector('.score-btn.sel[data-g="'+g+'"][data-c="'+c.id+'"]');
+      const score=s?parseInt(s.dataset.score):0;
+      ev.scores[c.id]=score; ev.total+=score*c.weight/5;
+    });
+    ev.total=Math.round(ev.total);
+    payload.evaluations.push(ev);
+  }
+
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Saving…';
+
+  if(APPS_SCRIPT_URL==='YOUR_APPS_SCRIPT_URL_HERE'){
+    setTimeout(()=>{btn.style.display='none';document.getElementById('success-banner').style.display='block';console.log('Teacher payload:',payload);},900);
+    return;
+  }
+  fetch(APPS_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(()=>{btn.style.display='none';document.getElementById('success-banner').style.display='block';document.getElementById('success-banner').scrollIntoView({behavior:'smooth'});})
+    .catch(err=>{btn.disabled=false;btn.textContent='Submit All Scores';alert('Submission failed: '+err.message);});
+}
+
+buildUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — MIS Peer Evaluation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root{
+  --red:#8B2635;--red-mid:#c94055;--red-light:#f5e8ea;
+  --dark:#1a1a1a;--mid:#4a4a4a;--light:#f7f4f0;--border:#ddd8d0;
+  --score-5:#2d6a4f;--score-4:#52b788;--score-3:#c9a227;--score-2:#f4a261;--score-1:#e63946;
+  --blue:#1a6ebd;--blue-light:#e8f2fc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--light);color:var(--dark);min-height:100vh}
+
+/* LOGIN */
+.login-overlay{position:fixed;inset:0;background:rgba(20,10,10,0.85);display:flex;align-items:center;justify-content:center;z-index:999;backdrop-filter:blur(4px)}
+.login-box{background:white;border-radius:16px;padding:40px 48px;width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4)}
+.login-box h2{font-family:'DM Serif Display',serif;font-size:28px;color:var(--red);margin-bottom:8px}
+.login-box p{font-size:13px;color:#888;margin-bottom:28px}
+.login-box input{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:14px;transition:border-color 0.2s}
+.login-box input:focus{border-color:var(--red)}
+.login-box button{width:100%;padding:13px;background:var(--red);color:white;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.login-error{color:var(--red);font-size:12px;margin-top:8px;display:none}
+
+/* HEADER */
+.header{background:var(--dark);color:white;padding:24px 0;border-bottom:3px solid var(--red)}
+.header-inner{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-family:'DM Serif Display',serif;font-size:26px}
+.header p{font-size:13px;opacity:0.6;margin-top:2px}
+.header-actions{display:flex;gap:10px}
+.btn{padding:9px 18px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;display:flex;align-items:center;gap:6px}
+.btn-primary{background:var(--red);color:white}
+.btn-primary:hover{background:var(--red-mid)}
+.btn-outline{background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.2)}
+.btn-outline:hover{background:rgba(255,255,255,0.2)}
+.btn-green{background:var(--score-5);color:white}
+.btn-green:hover{background:#1e4d38}
+.btn-blue{background:var(--blue);color:white}
+.btn-blue:hover{background:#155a9e}
+
+.container{max-width:1100px;margin:0 auto;padding:28px 24px 60px}
+
+/* NAV TABS */
+.nav-tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:28px}
+.nav-tab{padding:10px 20px;border:none;background:none;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;color:#888;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s}
+.nav-tab.active{color:var(--red);border-bottom-color:var(--red)}
+.nav-tab .badge{background:var(--red);color:white;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px}
+
+/* SECTION */
+.section{display:none}
+.section.active{display:block}
+
+/* STAT CARDS */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.stat-card{background:white;border-radius:12px;padding:20px 24px;border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+.stat-card .sv{font-family:'DM Serif Display',serif;font-size:36px;color:var(--red);line-height:1}
+.stat-card .sl{font-size:12px;color:#888;font-weight:500;margin-top:6px;text-transform:uppercase;letter-spacing:0.8px}
+.stat-card.green .sv{color:var(--score-5)}
+.stat-card.orange .sv{color:var(--score-2)}
+
+/* MISSING TABLE */
+.card{background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:24px;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+.card-header{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-header h3{font-size:15px;font-weight:700;color:var(--dark)}
+.card-header p{font-size:12px;color:#888;margin-top:2px}
+table{width:100%;border-collapse:collapse}
+th{background:#f9f6f2;padding:10px 16px;text-align:left;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;border-bottom:1px solid var(--border)}
+td{padding:11px 16px;font-size:13px;border-bottom:1px solid #f5f2ee}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+.badge-missing{background:#fdeced;color:var(--score-1);font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px}
+.badge-done{background:#edf7f2;color:var(--score-5);font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px}
+.group-pills{display:flex;flex-wrap:wrap;gap:4px}
+.pill{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
+.pill.done{background:#edf7f2;color:var(--score-5)}
+.pill.miss{background:#fdeced;color:var(--score-1)}
+
+/* GROUP REPORT */
+.group-selector{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.gs-btn{padding:8px 16px;border:1.5px solid var(--border);border-radius:8px;background:white;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;color:#555}
+.gs-btn.active{background:var(--red);color:white;border-color:var(--red)}
+.report-card{background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.04)}
+.report-header{background:var(--red);color:white;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.report-header h3{font-family:'DM Serif Display',serif;font-size:22px}
+.score-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0}
+.score-grid-item{padding:14px 20px;border-bottom:1px solid #f0ece6;border-right:1px solid #f0ece6}
+.score-grid-item:nth-child(even){border-right:none}
+.score-grid-item .sg-crit{font-size:12px;font-weight:600;color:#888;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.score-grid-item .sg-bars{display:flex;flex-direction:column;gap:3px}
+.peer-bar-row{display:flex;align-items:center;gap:8px;font-size:11px}
+.peer-bar-row .peer-label{width:52px;color:#aaa;flex-shrink:0}
+.mini-bar-wrap{flex:1;height:5px;background:#eee;border-radius:3px;overflow:hidden}
+.mini-bar{height:100%;border-radius:3px;transition:width 0.4s}
+.mini-bar.teacher{background:var(--red)}
+.mini-bar.peer{background:var(--blue)}
+.peer-bar-row .peer-val{font-weight:700;color:var(--dark);min-width:22px;text-align:right}
+
+/* FINAL SCORE TABLE */
+.final-score-row td:nth-child(4){font-weight:700;color:var(--blue)}
+.final-score-row td:nth-child(5){font-weight:700;color:var(--red)}
+.final-score-row td:last-child{font-weight:800;font-size:15px;color:var(--dark)}
+
+/* SUMMARIES */
+.summary-group-block{margin-bottom:24px}
+.summary-group-title{font-family:'DM Serif Display',serif;font-size:18px;color:var(--red);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--red-light)}
+.summary-entry{background:white;border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:10px}
+.summary-from{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:10px}
+.summary-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sf-item .sf-label{font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--red);margin-bottom:4px}
+.sf-item .sf-val{font-size:13px;color:var(--dark);line-height:1.5}
+.sf-item.full{grid-column:1/-1}
+
+/* LOADING */
+.loading{text-align:center;padding:60px;color:#aaa;font-size:14px}
+.loading .spin{display:inline-block;width:32px;height:32px;border:3px solid #ddd;border-top-color:var(--red);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:48px;color:#aaa}
+.empty .ei{font-size:40px;margin-bottom:12px}
+.empty p{font-size:14px}
+
+@media(max-width:768px){
+  .stat-row{grid-template-columns:1fr 1fr}
+  .score-grid{grid-template-columns:1fr}
+  .summary-fields{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <h2>Admin Dashboard</h2>
+    <p>Enter the instructor password to access evaluation data.</p>
+    <input type="password" id="pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Enter Dashboard</button>
+    <div class="login-error" id="login-error">Incorrect password.</div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <h1>Admin Dashboard</h1>
+      <p>MIS Final Presentation — Peer Evaluation</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" onclick="loadData()">↻ Refresh</button>
+      <button class="btn btn-green" onclick="downloadExcel()">⬇ Download Excel</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- NAV -->
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchSection('overview')">Overview</button>
+    <button class="nav-tab" onclick="switchSection('missing')" id="tab-missing">Missing <span class="badge" id="missing-badge">—</span></button>
+    <button class="nav-tab" onclick="switchSection('reports')">Group Reports</button>
+    <button class="nav-tab" onclick="switchSection('summaries')">Peer Summaries</button>
+    <button class="nav-tab" onclick="switchSection('final')">Final Scores</button>
+  </div>
+
+  <!-- ① OVERVIEW -->
+  <div class="section active" id="sec-overview">
+    <div class="stat-row" id="stat-row">
+      <div class="stat-card"><div class="sv" id="st-submitted">—</div><div class="sl">Submissions</div></div>
+      <div class="stat-card orange"><div class="sv" id="st-missing">—</div><div class="sl">Missing</div></div>
+      <div class="stat-card green"><div class="sv" id="st-teacher">—</div><div class="sl">Teacher Done</div></div>
+      <div class="stat-card"><div class="sv" id="st-total">—</div><div class="sl">Total Students</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><h3>Submission Status by Group</h3><p>Each student should evaluate 9 other groups</p></div></div>
+      <div id="overview-table-wrap"><div class="loading"><div class="spin"></div><br>Loading data…</div></div>
+    </div>
+  </div>
+
+  <!-- ② MISSING -->
+  <div class="section" id="sec-missing">
+    <div class="card">
+      <div class="card-header">
+        <div><h3>Students Who Have Not Submitted</h3><p>These students have not completed their peer evaluation.</p></div>
+      </div>
+      <div id="missing-table-wrap"><div class="loading"><div class="spin"></div><br>Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ③ GROUP REPORTS -->
+  <div class="section" id="sec-reports">
+    <div class="group-selector" id="report-group-selector"></div>
+    <div id="report-content"><div class="loading"><div class="spin"></div><br>Loading…</div></div>
+  </div>
+
+  <!-- ④ PEER SUMMARIES -->
+  <div class="section" id="sec-summaries">
+    <div class="group-selector" id="summary-group-selector"></div>
+    <div id="summary-content"><div class="loading"><div class="spin"></div><br>Loading…</div></div>
+  </div>
+
+  <!-- ⑤ FINAL SCORES -->
+  <div class="section" id="sec-final">
+    <div class="card">
+      <div class="card-header">
+        <div><h3>Final Weighted Scores</h3><p>Peer avg × 30% + Teacher × 70%</p></div>
+        <button class="btn btn-green" onclick="downloadExcel()">⬇ Excel</button>
+      </div>
+      <div id="final-table-wrap"><div class="loading"><div class="spin"></div><br>Loading…</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+const ADMIN_PASSWORD  = 'YOUR_ADMIN_PASSWORD_HERE';
+const TOTAL_GROUPS    = 10;
+const PEER_WEIGHT     = 0.30;
+const TEACHER_WEIGHT  = 0.70;
+
+// Student roster — fill in actual student IDs and names
+// Format: { id: 'B10901001', name: 'Alice Chen', group: 1 }
+const ROSTER = [
+  // Example entries — replace with your actual class roster
+  { id:'B10901001', name:'Student 01', group:1 },
+  { id:'B10901002', name:'Student 02', group:1 },
+  { id:'B10901003', name:'Student 03', group:1 },
+  { id:'B10901004', name:'Student 04', group:2 },
+  { id:'B10901005', name:'Student 05', group:2 },
+  { id:'B10901006', name:'Student 06', group:2 },
+  { id:'B10901007', name:'Student 07', group:3 },
+  { id:'B10901008', name:'Student 08', group:3 },
+  { id:'B10901009', name:'Student 09', group:3 },
+  { id:'B10901010', name:'Student 10', group:4 },
+  { id:'B10901011', name:'Student 11', group:4 },
+  { id:'B10901012', name:'Student 12', group:4 },
+  { id:'B10901013', name:'Student 13', group:5 },
+  { id:'B10901014', name:'Student 14', group:5 },
+  { id:'B10901015', name:'Student 15', group:5 },
+  { id:'B10901016', name:'Student 16', group:6 },
+  { id:'B10901017', name:'Student 17', group:6 },
+  { id:'B10901018', name:'Student 18', group:6 },
+  { id:'B10901019', name:'Student 19', group:7 },
+  { id:'B10901020', name:'Student 20', group:7 },
+  { id:'B10901021', name:'Student 21', group:7 },
+  { id:'B10901022', name:'Student 22', group:8 },
+  { id:'B10901023', name:'Student 23', group:8 },
+  { id:'B10901024', name:'Student 24', group:8 },
+  { id:'B10901025', name:'Student 25', group:9 },
+  { id:'B10901026', name:'Student 26', group:9 },
+  { id:'B10901027', name:'Student 27', group:9 },
+  { id:'B10901028', name:'Student 28', group:10 },
+  { id:'B10901029', name:'Student 29', group:10 },
+  { id:'B10901030', name:'Student 30', group:10 },
+];
+
+const CRITERIA_IDS = ['pi','se','sf','isd','ca','qa','pq','tm'];
+const CRITERIA_NAMES = {pi:'Problem ID',se:'Solution Eff.',sf:'Solution Feas.',isd:'IS Design',ca:'Competitiveness',qa:'Q&A',pq:'Pres. Quality',tm:'Time Mgmt'};
+const CRITERIA_WEIGHTS = {pi:20,se:20,sf:15,isd:15,ca:10,qa:10,pq:5,tm:5};
+
+// ── STATE ─────────────────────────────────────────────────────────
+let DB = { peerSubmissions: [], teacherScores: null };
+let selectedReportGroup = 1;
+let selectedSummaryGroup = 1;
+
+// ── LOGIN ─────────────────────────────────────────────────────────
+function doLogin() {
+  if (document.getElementById('pw-input').value === ADMIN_PASSWORD) {
+    document.getElementById('login-overlay').style.display = 'none';
+    loadData();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+// ── LOAD DATA from Apps Script ─────────────────────────────────────
+async function loadData() {
+  if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    // Demo mode: generate mock data
+    DB = generateMockData();
+    renderAll();
+    return;
+  }
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getData');
+    const json = await res.json();
+    DB.peerSubmissions = json.peerSubmissions || [];
+    DB.teacherScores   = json.teacherScores   || null;
+    renderAll();
+  } catch(e) {
+    alert('Failed to load data: ' + e.message);
+  }
+}
+
+// ── MOCK DATA for demo ────────────────────────────────────────────
+function generateMockData() {
+  const subs = [];
+  ROSTER.forEach(s => {
+    if (Math.random() > 0.2) { // 80% submitted
+      const evs = [];
+      for (let g = 1; g <= TOTAL_GROUPS; g++) {
+        if (g === s.group) continue;
+        const scores = {};
+        let total = 0;
+        CRITERIA_IDS.forEach(id => {
+          const sc = Math.floor(Math.random()*3)+3;
+          scores[id] = sc;
+          total += sc * CRITERIA_WEIGHTS[id] / 5;
+        });
+        evs.push({ group:g, scores, total:Math.round(total),
+          summary:{ problem:'This group identified the inventory management problem.',
+            solution:'They proposed an ERP system with real-time tracking.',
+            strength:'Strong problem analysis with data support.',
+            improve:'The IS architecture diagram could be more detailed.',
+            comment:'Overall a solid presentation with clear structure.' }
+        });
+      }
+      subs.push({ studentId:s.id, studentName:s.name, myGroup:s.group, evaluations:evs, timestamp:new Date().toISOString() });
+    }
+  });
+
+  const teacherEvs = [];
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    const scores = {}; let total = 0;
+    CRITERIA_IDS.forEach(id => { const sc=Math.floor(Math.random()*2)+3; scores[id]=sc; total+=sc*CRITERIA_WEIGHTS[id]/5; });
+    teacherEvs.push({ group:g, scores, total:Math.round(total), notes:'Good overall performance. The team demonstrated a clear understanding of the business problem.' });
+  }
+  return { peerSubmissions: subs, teacherScores: { evaluations: teacherEvs } };
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────
+function renderAll() {
+  renderOverview();
+  renderMissing();
+  buildGroupSelectors();
+  renderReport(selectedReportGroup);
+  renderSummary(selectedSummaryGroup);
+  renderFinal();
+}
+
+// ── OVERVIEW ──────────────────────────────────────────────────────
+function renderOverview() {
+  const submitted = new Set(DB.peerSubmissions.map(s=>s.studentId));
+  const missing = ROSTER.filter(s=>!submitted.has(s.id));
+  document.getElementById('st-submitted').textContent = submitted.size;
+  document.getElementById('st-missing').textContent = missing.length;
+  document.getElementById('st-teacher').textContent = DB.teacherScores ? '✓' : '✗';
+  document.getElementById('st-total').textContent = ROSTER.length;
+  document.getElementById('missing-badge').textContent = missing.length;
+
+  // Overview table: by group
+  let rows = '';
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    const groupStudents = ROSTER.filter(s=>s.group===g);
+    const pills = groupStudents.map(s=>{
+      const done = submitted.has(s.id);
+      return `<span class="pill ${done?'done':'miss'}">${s.name.split(' ')[0]}</span>`;
+    }).join('');
+    const doneCount = groupStudents.filter(s=>submitted.has(s.id)).length;
+    rows += `<tr>
+      <td><strong>Group ${g}</strong></td>
+      <td>${groupStudents.length}</td>
+      <td>${doneCount} / ${groupStudents.length}</td>
+      <td><div class="group-pills">${pills}</div></td>
+      <td><span class="${doneCount===groupStudents.length?'badge-done':'badge-missing'}">${doneCount===groupStudents.length?'Complete':'Pending'}</span></td>
+    </tr>`;
+  }
+  document.getElementById('overview-table-wrap').innerHTML = `
+    <table>
+      <thead><tr><th>Group</th><th>Members</th><th>Submitted</th><th>Students</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ── MISSING ───────────────────────────────────────────────────────
+function renderMissing() {
+  const submitted = new Set(DB.peerSubmissions.map(s=>s.studentId));
+  const missing = ROSTER.filter(s=>!submitted.has(s.id));
+  if (!missing.length) {
+    document.getElementById('missing-table-wrap').innerHTML = '<div class="empty"><div class="ei">🎉</div><p>All students have submitted their evaluations!</p></div>';
+    return;
+  }
+  const rows = missing.map(s=>`<tr>
+    <td>${s.id}</td><td>${s.name}</td><td>Group ${s.group}</td>
+    <td><span class="badge-missing">Not Submitted</span></td>
+  </tr>`).join('');
+  document.getElementById('missing-table-wrap').innerHTML = `
+    <table>
+      <thead><tr><th>Student ID</th><th>Name</th><th>Group</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ── GROUP SELECTORS ───────────────────────────────────────────────
+function buildGroupSelectors() {
+  ['report','summary'].forEach(type => {
+    const el = document.getElementById(type+'-group-selector');
+    el.innerHTML = '';
+    for (let g = 1; g <= TOTAL_GROUPS; g++) {
+      const b = document.createElement('button');
+      b.className = 'gs-btn' + (g===1?' active':'');
+      b.textContent = 'Group ' + g;
+      b.onclick = () => {
+        el.querySelectorAll('.gs-btn').forEach(x=>x.classList.remove('active'));
+        b.classList.add('active');
+        if (type==='report') { selectedReportGroup=g; renderReport(g); }
+        else { selectedSummaryGroup=g; renderSummary(g); }
+      };
+      el.appendChild(b);
+    }
+  });
+}
+
+// ── GROUP REPORT ──────────────────────────────────────────────────
+function renderReport(g) {
+  const teacherEv = DB.teacherScores?.evaluations?.find(e=>e.group===g);
+  const peerEvs   = DB.peerSubmissions.flatMap(s=>s.evaluations.filter(e=>e.group===g));
+
+  // Per-criteria averages
+  const critRows = CRITERIA_IDS.map(id => {
+    const peerAvg = peerEvs.length ? peerEvs.reduce((a,e)=>a+(e.scores[id]||0),0)/peerEvs.length : null;
+    const teacherScore = teacherEv ? teacherEv.scores[id] : null;
+    const peerPct  = peerAvg   ? (peerAvg/5*100).toFixed(0) : 0;
+    const teachPct = teacherScore ? (teacherScore/5*100).toFixed(0) : 0;
+    return `<div class="score-grid-item">
+      <div class="sg-crit">${CRITERIA_NAMES[id]} <small style="color:#bbb">(${CRITERIA_WEIGHTS[id]}%)</small></div>
+      <div class="sg-bars">
+        <div class="peer-bar-row">
+          <span class="peer-label" style="color:var(--blue)">Peer avg</span>
+          <div class="mini-bar-wrap"><div class="mini-bar peer" style="width:${peerPct}%"></div></div>
+          <span class="peer-val" style="color:var(--blue)">${peerAvg!==null?peerAvg.toFixed(1):'—'}</span>
+        </div>
+        <div class="peer-bar-row">
+          <span class="peer-label" style="color:var(--red)">Teacher</span>
+          <div class="mini-bar-wrap"><div class="mini-bar teacher" style="width:${teachPct}%"></div></div>
+          <span class="peer-val" style="color:var(--red)">${teacherScore!==null?teacherScore:'—'}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Totals
+  const peerTotal    = peerEvs.length ? peerEvs.reduce((a,e)=>a+e.total,0)/peerEvs.length : null;
+  const teacherTotal = teacherEv ? teacherEv.total : null;
+  const finalScore   = (peerTotal!==null&&teacherTotal!==null) ? Math.round(peerTotal*PEER_WEIGHT + teacherTotal*TEACHER_WEIGHT) : null;
+
+  document.getElementById('report-content').innerHTML = `
+    <div class="report-card">
+      <div class="report-header">
+        <h3>Group ${g} — Evaluation Report</h3>
+        <span style="font-size:13px;opacity:0.8">${peerEvs.length} peer evaluator(s)</span>
+      </div>
+      <div class="score-grid">${critRows}</div>
+      <div style="padding:16px 24px;background:#f9f6f2;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+        <div style="text-align:center">
+          <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Peer Avg (30%)</div>
+          <div style="font-size:28px;font-weight:700;color:var(--blue)">${peerTotal!==null?peerTotal.toFixed(1):'—'}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Teacher Score (70%)</div>
+          <div style="font-size:28px;font-weight:700;color:var(--red)">${teacherTotal!==null?teacherTotal:'—'}</div>
+        </div>
+        <div style="text-align:center;background:var(--dark);border-radius:10px;padding:10px">
+          <div style="font-size:11px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Final Score</div>
+          <div style="font-size:32px;font-weight:800;color:white">${finalScore!==null?finalScore:'—'}</div>
+        </div>
+      </div>
+      ${teacherEv?.notes?`<div style="padding:16px 24px;border-top:1px solid var(--border)"><div style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">INSTRUCTOR NOTES</div><p style="font-size:13px;line-height:1.6;color:var(--mid)">${teacherEv.notes}</p></div>`:''}
+    </div>`;
+}
+
+// ── PEER SUMMARIES ────────────────────────────────────────────────
+function renderSummary(g) {
+  const peerEvs = DB.peerSubmissions.map(s=>{
+    const ev = s.evaluations.find(e=>e.group===g);
+    if (!ev) return null;
+    return { fromGroup: s.myGroup, summary: ev.summary };
+  }).filter(Boolean);
+
+  if (!peerEvs.length) {
+    document.getElementById('summary-content').innerHTML='<div class="empty"><div class="ei">📭</div><p>No peer summaries yet for Group '+g+'.</p></div>';
+    return;
+  }
+
+  const entries = peerEvs.map(e=>`
+    <div class="summary-entry">
+      <div class="summary-from">From Group ${e.fromGroup}</div>
+      <div class="summary-fields">
+        <div class="sf-item"><div class="sf-label">Problem Identified</div><div class="sf-val">${e.summary.problem||'—'}</div></div>
+        <div class="sf-item"><div class="sf-label">Solution Proposed</div><div class="sf-val">${e.summary.solution||'—'}</div></div>
+        <div class="sf-item"><div class="sf-label">Strength</div><div class="sf-val">${e.summary.strength||'—'}</div></div>
+        <div class="sf-item"><div class="sf-label">Suggestion</div><div class="sf-val">${e.summary.improve||'—'}</div></div>
+        <div class="sf-item full"><div class="sf-label">Overall Comments</div><div class="sf-val">${e.summary.comment||'—'}</div></div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('summary-content').innerHTML=`
+    <div class="summary-group-block">
+      <div class="summary-group-title">Group ${g} — Peer Summaries (${peerEvs.length} responses)</div>
+      ${entries}
+    </div>`;
+}
+
+// ── FINAL SCORES ──────────────────────────────────────────────────
+function renderFinal() {
+  let rows = '';
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    const peerEvs     = DB.peerSubmissions.flatMap(s=>s.evaluations.filter(e=>e.group===g));
+    const teacherEv   = DB.teacherScores?.evaluations?.find(e=>e.group===g);
+    const peerTotal   = peerEvs.length ? peerEvs.reduce((a,e)=>a+e.total,0)/peerEvs.length : null;
+    const teacherTotal= teacherEv ? teacherEv.total : null;
+    const finalScore  = (peerTotal!==null&&teacherTotal!==null) ? Math.round(peerTotal*PEER_WEIGHT+teacherTotal*TEACHER_WEIGHT) : null;
+    rows += `<tr class="final-score-row">
+      <td><strong>Group ${g}</strong></td>
+      <td>${peerEvs.length} students</td>
+      <td>${peerTotal!==null?peerTotal.toFixed(1):'—'}</td>
+      <td>${teacherTotal!==null?teacherTotal:'—'}</td>
+      <td>${peerTotal!==null?(peerTotal*PEER_WEIGHT).toFixed(1):'—'}</td>
+      <td>${teacherTotal!==null?(teacherTotal*TEACHER_WEIGHT).toFixed(1):'—'}</td>
+      <td>${finalScore!==null?finalScore:'—'}</td>
+    </tr>`;
+  }
+  document.getElementById('final-table-wrap').innerHTML=`
+    <table>
+      <thead><tr>
+        <th>Group</th><th>Peer Count</th>
+        <th>Peer Avg /100</th><th>Teacher /100</th>
+        <th>Peer ×30%</th><th>Teacher ×70%</th>
+        <th>Final Score</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ── EXCEL DOWNLOAD ────────────────────────────────────────────────
+function downloadExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Final Scores
+  const finalData = [['Group','Peer Evaluators','Peer Avg','Teacher Score','Peer×30%','Teacher×70%','Final Score']];
+  for (let g=1;g<=TOTAL_GROUPS;g++) {
+    const peerEvs   = DB.peerSubmissions.flatMap(s=>s.evaluations.filter(e=>e.group===g));
+    const teacherEv = DB.teacherScores?.evaluations?.find(e=>e.group===g);
+    const peerTotal = peerEvs.length ? peerEvs.reduce((a,e)=>a+e.total,0)/peerEvs.length : null;
+    const tTotal    = teacherEv?.total ?? null;
+    const final     = (peerTotal!==null&&tTotal!==null) ? Math.round(peerTotal*PEER_WEIGHT+tTotal*TEACHER_WEIGHT) : null;
+    finalData.push(['Group '+g, peerEvs.length, peerTotal!==null?+peerTotal.toFixed(1):'-', tTotal??'-', peerTotal!==null?+(peerTotal*PEER_WEIGHT).toFixed(1):'-', tTotal!==null?+(tTotal*TEACHER_WEIGHT).toFixed(1):'-', final??'-']);
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(finalData), 'Final Scores');
+
+  // Sheet 2: Missing Students
+  const missingData = [['Student ID','Name','Group','Status']];
+  const submitted = new Set(DB.peerSubmissions.map(s=>s.studentId));
+  ROSTER.forEach(s=>{ missingData.push([s.id, s.name, 'Group '+s.group, submitted.has(s.id)?'Submitted':'MISSING']); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(missingData), 'Submission Status');
+
+  // Sheet 3: All Peer Scores
+  const scoreData = [['Timestamp','Student ID','Student Name','Student Group','Evaluated Group',...CRITERIA_IDS.map(id=>CRITERIA_NAMES[id]+' ('+CRITERIA_WEIGHTS[id]+'%)'), 'Weighted Total']];
+  DB.peerSubmissions.forEach(s=>{
+    s.evaluations.forEach(e=>{
+      scoreData.push([s.timestamp, s.studentId, s.studentName, 'Group '+s.myGroup, 'Group '+e.group, ...CRITERIA_IDS.map(id=>e.scores[id]||'-'), e.total]);
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(scoreData), 'Peer Scores');
+
+  // Sheet 4: Teacher Scores
+  if (DB.teacherScores) {
+    const tData = [['Group',...CRITERIA_IDS.map(id=>CRITERIA_NAMES[id]),'Total','Notes']];
+    DB.teacherScores.evaluations.forEach(e=>{ tData.push(['Group '+e.group,...CRITERIA_IDS.map(id=>e.scores[id]||'-'), e.total, e.notes||'']); });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(tData), 'Teacher Scores');
+  }
+
+  // Sheet 5: Peer Summaries
+  const sumData = [['Student ID','Student Group','Evaluated Group','Problem Identified','Solution Proposed','Strength','Suggestion','Overall Comments']];
+  DB.peerSubmissions.forEach(s=>{
+    s.evaluations.forEach(e=>{
+      const sm=e.summary||{};
+      sumData.push([s.studentId,'Group '+s.myGroup,'Group '+e.group,sm.problem||'',sm.solution||'',sm.strength||'',sm.improve||'',sm.comment||'']);
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sumData), 'Peer Summaries');
+
+  XLSX.writeFile(wb, 'MIS_Peer_Evaluation_Results.xlsx');
+}
+
+// ── NAV ───────────────────────────────────────────────────────────
+function switchSection(name) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// NOTE: loadData() is called after successful login
+</script>
+</body>
+</html>

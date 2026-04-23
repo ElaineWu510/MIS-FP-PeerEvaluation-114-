@@ -178,10 +178,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--light);color:var(--dark);
 </div>
 
 <script>
-// ── CONFIG (same as shared.js) ────────────────────────────────────
+// ── CONFIG ────────────────────────────────────────────────────────
+// The admin password is stored on the server (Apps Script Script Properties)
+// and is never shipped to the browser. See apps_script.gs for setup.
 const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
-const ADMIN_PASSWORD  = 'YOUR_ADMIN_PASSWORD_HERE';
 const TOTAL_GROUPS    = 10;
+
+// Authenticated password kept in memory for this session only (used to
+// authorize the teacher's final submission). Cleared on page reload.
+let ADMIN_PW = '';
 
 const CRITERIA = [
   { id:'pi',  name:'Problem Identification',   weight:20, rubric:{5:"Accurately identifies company's current problems; thorough analysis; captures core pain points",4:'Correctly describes main problems; clear and reasonable analysis',3:'Describes basic problems, but analysis lacks depth',2:'Problem description is inaccurate or superficial',1:'Fails to identify problems or seriously misjudges situation'}},
@@ -196,12 +201,39 @@ const CRITERIA = [
 const SL = {5:'Excellent',4:'Good',3:'Satisfactory',2:'Need Impr.',1:'Failing'};
 
 // ── LOGIN ─────────────────────────────────────────────────────────
-function doLogin() {
+async function doLogin() {
   const v = document.getElementById('pw-input').value;
-  if (v === ADMIN_PASSWORD) {
+  const errEl = document.getElementById('login-error');
+  const btn = document.querySelector('.login-box button');
+
+  // Demo mode: no backend configured — allow any password
+  if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    ADMIN_PW = v;
     document.getElementById('login-overlay').style.display = 'none';
-  } else {
-    document.getElementById('login-error').style.display = 'block';
+    return;
+  }
+
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = 'Checking…';
+  try {
+    const url = APPS_SCRIPT_URL + '?action=verifyPassword&password=' + encodeURIComponent(v);
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.ok) {
+      ADMIN_PW = v;
+      document.getElementById('login-overlay').style.display = 'none';
+    } else {
+      errEl.textContent = 'Incorrect password.';
+      errEl.style.display = 'block';
+    }
+  } catch (e) {
+    errEl.textContent = 'Login failed: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
   }
 }
 
@@ -311,7 +343,7 @@ function submitTeacher() {
   }
   if(missing.length){ alert('Please complete scores and notes for:\n'+missing.join(', ')); return; }
 
-  const payload = { type:'teacher', timestamp:new Date().toISOString(), evaluations:[] };
+  const payload = { type:'teacher', password:ADMIN_PW, timestamp:new Date().toISOString(), evaluations:[] };
   for(let g=1;g<=TOTAL_GROUPS;g++){
     const ev={group:g, scores:{}, total:0, notes:document.getElementById('tnotes-'+g).value.trim()};
     CRITERIA.forEach(c=>{

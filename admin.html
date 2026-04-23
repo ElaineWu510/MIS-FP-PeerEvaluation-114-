@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Dashboard — MIS Peer Evaluation</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
 :root{
@@ -195,6 +197,10 @@ tr:hover td{background:#fafaf8}
 
   <!-- ③ GROUP REPORTS -->
   <div class="section" id="sec-reports">
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-blue" onclick="downloadGroupPDF(selectedReportGroup)">⬇ Download This Group PDF</button>
+      <button class="btn btn-green" onclick="downloadAllGroupPDFs()">⬇ Download All Group PDFs</button>
+    </div>
     <div class="group-selector" id="report-group-selector"></div>
     <div id="report-content"><div class="loading"><div class="spin"></div><br>Loading…</div></div>
   </div>
@@ -220,11 +226,16 @@ tr:hover td{background:#fafaf8}
 
 <script>
 // ── CONFIG ────────────────────────────────────────────────────────
+// The admin password is stored in Apps Script Script Properties (server
+// side) and is never embedded in this file. See apps_script.gs for setup.
 const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
-const ADMIN_PASSWORD  = 'YOUR_ADMIN_PASSWORD_HERE';
 const TOTAL_GROUPS    = 10;
 const PEER_WEIGHT     = 0.30;
 const TEACHER_WEIGHT  = 0.70;
+
+// Authenticated password kept in memory for this session only. Used to
+// authorize every getData call so the endpoint can't be scraped openly.
+let ADMIN_PW = '';
 
 // Student roster — fill in actual student IDs and names
 // Format: { id: 'B10901001', name: 'Alice Chen', group: 1 }
@@ -272,12 +283,41 @@ let selectedReportGroup = 1;
 let selectedSummaryGroup = 1;
 
 // ── LOGIN ─────────────────────────────────────────────────────────
-function doLogin() {
-  if (document.getElementById('pw-input').value === ADMIN_PASSWORD) {
+async function doLogin() {
+  const v = document.getElementById('pw-input').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.querySelector('.login-box button');
+
+  // Demo mode: no backend configured — skip verification
+  if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    ADMIN_PW = v;
     document.getElementById('login-overlay').style.display = 'none';
     loadData();
-  } else {
-    document.getElementById('login-error').style.display = 'block';
+    return;
+  }
+
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = 'Checking…';
+  try {
+    const url = APPS_SCRIPT_URL + '?action=verifyPassword&password=' + encodeURIComponent(v);
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.ok) {
+      ADMIN_PW = v;
+      document.getElementById('login-overlay').style.display = 'none';
+      loadData();
+    } else {
+      errEl.textContent = 'Incorrect password.';
+      errEl.style.display = 'block';
+    }
+  } catch (e) {
+    errEl.textContent = 'Login failed: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
   }
 }
 
@@ -290,8 +330,10 @@ async function loadData() {
     return;
   }
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getData');
+    const url = APPS_SCRIPT_URL + '?action=getData&password=' + encodeURIComponent(ADMIN_PW);
+    const res = await fetch(url);
     const json = await res.json();
+    if (json.status === 'error') throw new Error(json.message || 'Unauthorized');
     DB.peerSubmissions = json.peerSubmissions || [];
     DB.teacherScores   = json.teacherScores   || null;
     renderAll();
@@ -589,6 +631,229 @@ function downloadExcel() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sumData), 'Peer Summaries');
 
   XLSX.writeFile(wb, 'MIS_Peer_Evaluation_Results.xlsx');
+}
+
+// ── PDF: per-group evaluation report ──────────────────────────────
+// Builds an off-screen report DOM, rasterizes it with html2canvas, and
+// outputs a multi-page A4 PDF via jsPDF. Supports Chinese (CJK) text
+// because we render from DOM rather than using jsPDF's internal fonts.
+
+function buildGroupReportHTML(g) {
+  const teacherEv = DB.teacherScores?.evaluations?.find(e => e.group === g);
+  const peerEvsAll = DB.peerSubmissions.flatMap(s =>
+    s.evaluations
+      .filter(e => e.group === g)
+      .map(e => ({ fromGroup: s.myGroup, ...e }))
+  );
+
+  // Score averages per criterion
+  const peerAvgs = {};
+  CRITERIA_IDS.forEach(id => {
+    peerAvgs[id] = peerEvsAll.length
+      ? peerEvsAll.reduce((a, e) => a + (e.scores[id] || 0), 0) / peerEvsAll.length
+      : null;
+  });
+
+  const peerTotal = peerEvsAll.length
+    ? peerEvsAll.reduce((a, e) => a + e.total, 0) / peerEvsAll.length
+    : null;
+  const teacherTotal = teacherEv ? teacherEv.total : null;
+  const finalScore = (peerTotal !== null && teacherTotal !== null)
+    ? Math.round(peerTotal * PEER_WEIGHT + teacherTotal * TEACHER_WEIGHT)
+    : null;
+
+  // Criteria comparison rows
+  const critRows = CRITERIA_IDS.map(id => {
+    const p = peerAvgs[id];
+    const t = teacherEv ? teacherEv.scores[id] : null;
+    return `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee">${CRITERIA_NAMES[id]}
+          <span style="color:#aaa;font-size:11px">(${CRITERIA_WEIGHTS[id]}%)</span></td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;color:#1a6ebd;font-weight:600">
+          ${p !== null ? p.toFixed(2) : '—'} / 5</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;color:#8B2635;font-weight:600">
+          ${t !== null ? t : '—'} / 5</td>
+      </tr>`;
+  }).join('');
+
+  // Peer summary cards (anonymized — "From Group X")
+  const summaryCards = peerEvsAll.map((e, i) => {
+    const s = e.summary || {};
+    return `
+      <div style="border:1px solid #ddd8d0;border-radius:8px;padding:12px 16px;margin-bottom:10px;background:#fafaf8;page-break-inside:avoid">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#888;margin-bottom:8px">
+          EVALUATOR ${i + 1} — FROM GROUP ${e.fromGroup}
+        </div>
+        <div style="font-size:12px;line-height:1.55;color:#333">
+          <div style="margin-bottom:6px"><b style="color:#8B2635">Problem Identified:</b> ${s.problem || '—'}</div>
+          <div style="margin-bottom:6px"><b style="color:#8B2635">Solution Proposed:</b> ${s.solution || '—'}</div>
+          <div style="margin-bottom:6px"><b style="color:#8B2635">Strength:</b> ${s.strength || '—'}</div>
+          <div style="margin-bottom:6px"><b style="color:#8B2635">Suggestion:</b> ${s.improve || '—'}</div>
+          <div><b style="color:#8B2635">Overall Comments:</b> ${s.comment || '—'}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Per-evaluator score breakdown (anonymous)
+  const evaluatorRows = peerEvsAll.map((e, i) => `
+    <tr>
+      <td style="padding:6px 10px;border-bottom:1px solid #f0ece6;font-weight:600">From Group ${e.fromGroup}</td>
+      ${CRITERIA_IDS.map(id => `<td style="padding:6px 10px;border-bottom:1px solid #f0ece6;text-align:center">${e.scores[id] ?? '—'}</td>`).join('')}
+      <td style="padding:6px 10px;border-bottom:1px solid #f0ece6;text-align:center;font-weight:700">${e.total}</td>
+    </tr>`).join('');
+
+  const today = new Date().toLocaleDateString();
+
+  return `
+    <div style="font-family:'Noto Sans TC','DM Sans',sans-serif;background:white;color:#1a1a1a;width:760px;padding:40px 48px">
+      <!-- Title -->
+      <div style="border-bottom:3px solid #8B2635;padding-bottom:16px;margin-bottom:24px">
+        <div style="font-size:12px;color:#888;letter-spacing:2px">MIS FINAL PRESENTATION · PEER EVALUATION</div>
+        <h1 style="font-family:'DM Serif Display',serif;font-size:32px;color:#8B2635;margin-top:4px">Group ${g} — Evaluation Report</h1>
+        <div style="font-size:12px;color:#888;margin-top:6px">Generated ${today} · ${peerEvsAll.length} peer evaluator(s)${teacherEv ? ' · teacher evaluation complete' : ' · teacher evaluation pending'}</div>
+      </div>
+
+      <!-- Final score summary -->
+      <div style="display:flex;gap:14px;margin-bottom:28px">
+        <div style="flex:1;border:1px solid #ddd8d0;border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:10px;color:#888;letter-spacing:1px">PEER AVG (30%)</div>
+          <div style="font-size:26px;font-weight:700;color:#1a6ebd;margin-top:4px">${peerTotal !== null ? peerTotal.toFixed(1) : '—'}</div>
+        </div>
+        <div style="flex:1;border:1px solid #ddd8d0;border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:10px;color:#888;letter-spacing:1px">TEACHER (70%)</div>
+          <div style="font-size:26px;font-weight:700;color:#8B2635;margin-top:4px">${teacherTotal !== null ? teacherTotal : '—'}</div>
+        </div>
+        <div style="flex:1;border-radius:10px;padding:14px;text-align:center;background:#1a1a1a;color:white">
+          <div style="font-size:10px;letter-spacing:1px;opacity:0.7">FINAL SCORE</div>
+          <div style="font-size:30px;font-weight:800;margin-top:4px">${finalScore !== null ? finalScore : '—'}</div>
+        </div>
+      </div>
+
+      <!-- Criteria comparison table -->
+      <h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:#1a1a1a">Criteria — Peer vs. Teacher</h2>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:28px;font-size:12px">
+        <thead>
+          <tr style="background:#f9f6f2">
+            <th style="padding:8px 12px;text-align:left;font-size:11px;letter-spacing:1px;color:#888">CRITERION</th>
+            <th style="padding:8px 12px;text-align:center;font-size:11px;letter-spacing:1px;color:#1a6ebd">PEER AVG</th>
+            <th style="padding:8px 12px;text-align:center;font-size:11px;letter-spacing:1px;color:#8B2635">TEACHER</th>
+          </tr>
+        </thead>
+        <tbody>${critRows}</tbody>
+      </table>
+
+      <!-- Teacher notes -->
+      ${teacherEv?.notes ? `
+        <h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:#1a1a1a">Instructor Notes</h2>
+        <div style="border-left:4px solid #8B2635;background:#f5e8ea;padding:12px 16px;border-radius:0 8px 8px 0;font-size:12px;line-height:1.6;margin-bottom:28px;white-space:pre-wrap">${teacherEv.notes}</div>
+      ` : ''}
+
+      <!-- Per-evaluator score breakdown -->
+      ${peerEvsAll.length ? `
+        <h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:#1a1a1a">Peer Scores (Anonymous)</h2>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:28px;font-size:11px">
+          <thead>
+            <tr style="background:#f9f6f2">
+              <th style="padding:6px 10px;text-align:left;letter-spacing:0.5px">Source</th>
+              ${CRITERIA_IDS.map(id => `<th style="padding:6px 10px;text-align:center">${CRITERIA_NAMES[id]}</th>`).join('')}
+              <th style="padding:6px 10px;text-align:center">Total</th>
+            </tr>
+          </thead>
+          <tbody>${evaluatorRows}</tbody>
+        </table>
+      ` : ''}
+
+      <!-- Peer text summaries -->
+      ${peerEvsAll.length ? `
+        <h2 style="font-size:15px;font-weight:700;margin-bottom:10px;color:#1a1a1a">Peer Written Feedback</h2>
+        ${summaryCards}
+      ` : ''}
+
+      <div style="margin-top:32px;padding-top:12px;border-top:1px solid #ddd8d0;font-size:10px;color:#aaa;text-align:center">
+        MIS Peer Evaluation System · Final score = Peer avg × 30% + Teacher × 70%
+      </div>
+    </div>`;
+}
+
+async function renderGroupToPDF(g, pdf, firstPage) {
+  // Create a temporary off-screen container
+  const wrap = document.createElement('div');
+  wrap.style.position = 'fixed';
+  wrap.style.left = '-9999px';
+  wrap.style.top  = '0';
+  wrap.innerHTML = buildGroupReportHTML(g);
+  document.body.appendChild(wrap);
+
+  try {
+    const node = wrap.firstElementChild;
+    // Let fonts load before rasterizing
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.ready; } catch (_) {} }
+
+    const canvas = await html2canvas(node, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const pageW = pdf.internal.pageSize.getWidth();   // A4: 210 mm
+    const pageH = pdf.internal.pageSize.getHeight();  // A4: 297 mm
+    const margin = 10;
+    const imgW = pageW - margin * 2;
+    const imgH = (canvas.height * imgW) / canvas.width;
+
+    if (!firstPage) pdf.addPage();
+
+    if (imgH <= pageH - margin * 2) {
+      pdf.addImage(imgData, 'PNG', margin, margin, imgW, imgH);
+    } else {
+      // Slice the tall image across multiple pages
+      let heightLeft = imgH;
+      let position = margin;
+      pdf.addImage(imgData, 'PNG', margin, position, imgW, imgH);
+      heightLeft -= (pageH - margin * 2);
+      while (heightLeft > 0) {
+        pdf.addPage();
+        position = margin - (imgH - heightLeft);
+        pdf.addImage(imgData, 'PNG', margin, position, imgW, imgH);
+        heightLeft -= (pageH - margin * 2);
+      }
+    }
+  } finally {
+    document.body.removeChild(wrap);
+  }
+}
+
+async function downloadGroupPDF(g) {
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+    await renderGroupToPDF(g, pdf, true);
+    pdf.save(`Group_${g}_Evaluation_Report.pdf`);
+  } catch (e) {
+    alert('PDF generation failed: ' + e.message);
+  }
+}
+
+async function downloadAllGroupPDFs() {
+  // Produces one combined PDF with a cover page per group.
+  const btn = event?.target;
+  const origText = btn?.textContent;
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+    for (let g = 1; g <= TOTAL_GROUPS; g++) {
+      await renderGroupToPDF(g, pdf, g === 1);
+    }
+    pdf.save('All_Group_Evaluation_Reports.pdf');
+  } catch (e) {
+    alert('PDF generation failed: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = origText; }
+  }
 }
 
 // ── NAV ───────────────────────────────────────────────────────────

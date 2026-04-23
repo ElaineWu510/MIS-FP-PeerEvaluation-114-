@@ -2,11 +2,31 @@
 //  MIS Peer Evaluation — Google Apps Script
 //  Paste this entire file into Extensions → Apps Script
 // ════════════════════════════════════════════════════════════
+//  SETUP (one-time):
+//  1. Replace SPREADSHEET_ID below with your Google Sheet ID.
+//  2. Set the admin password in Script Properties:
+//       Project Settings (⚙) → Script Properties → Add script property
+//       Key:   ADMIN_PASSWORD
+//       Value: <your password, e.g. MIS2026!>
+//  3. Deploy → New deployment → Web app
+//       Execute as: Me    |    Who has access: Anyone
+// ════════════════════════════════════════════════════════════
 
 const SPREADSHEET_ID  = 'YOUR_SPREADSHEET_ID_HERE';
 const SHEET_SCORES    = 'PeerScores';
 const SHEET_SUMMARIES = 'PeerSummaries';
 const SHEET_TEACHER   = 'TeacherScores';
+
+// ── PASSWORD HELPERS ─────────────────────────────────────────
+function getAdminPassword_() {
+  const pw = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+  if (!pw) throw new Error('ADMIN_PASSWORD is not set in Script Properties.');
+  return pw;
+}
+
+function checkPassword_(pw) {
+  return pw && pw === getAdminPassword_();
+}
 
 // ── POST: receive submissions ────────────────────────────────
 function doPost(e) {
@@ -14,9 +34,14 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     const ss   = SpreadsheetApp.openById(SPREADSHEET_ID);
 
+    // Teacher submissions must include a valid password
     if (data.type === 'teacher') {
+      if (!checkPassword_(data.password)) {
+        return jsonResponse({ status: 'error', message: 'Unauthorized' });
+      }
       saveTeacherScores(ss, data);
     } else {
+      // Student peer submissions: open (no password)
       savePeerScores(ss, data);
       savePeerSummaries(ss, data);
     }
@@ -30,14 +55,25 @@ function doPost(e) {
 // ── GET: return all data to admin dashboard ──────────────────
 function doGet(e) {
   try {
-    const ss     = SpreadsheetApp.openById(SPREADSHEET_ID);
     const action = e.parameter.action;
 
+    // Password verification endpoint (used by teacher.html / admin.html login)
+    if (action === 'verifyPassword') {
+      const ok = checkPassword_(e.parameter.password);
+      return jsonResponse({ ok: !!ok });
+    }
+
+    // Data fetch — requires password
     if (action === 'getData') {
+      if (!checkPassword_(e.parameter.password)) {
+        return jsonResponse({ status: 'error', message: 'Unauthorized' });
+      }
+      const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       const peerSubmissions = readPeerSubmissions(ss);
       const teacherScores   = readTeacherScores(ss);
       return jsonResponse({ peerSubmissions, teacherScores });
     }
+
     return jsonResponse({ status: 'ok' });
   } catch (err) {
     return jsonResponse({ status: 'error', message: err.message });

@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peer Evaluation — MSF</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --red: #8B2635;
+    --red-light: #f5e8ea;
+    --red-mid: #c94055;
+    --dark: #1a1a1a;
+    --mid: #4a4a4a;
+    --light: #f7f4f0;
+    --white: #ffffff;
+    --border: #ddd8d0;
+    --score-5: #2d6a4f;
+    --score-4: #52b788;
+    --score-3: #e9c46a;
+    --score-2: #f4a261;
+    --score-1: #e63946;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--light);
+    color: var(--dark);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--red);
+    color: white;
+    padding: 40px 0 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 10%;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+  }
+  .header-inner {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+  .course-tag {
+    display: inline-block;
+    background: rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.9);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 14px;
+  }
+  .header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(26px, 5vw, 36px);
+    line-height: 1.15;
+    margin-bottom: 10px;
+  }
+  .header p {
+    font-size: 14px;
+    opacity: 0.85;
+    line-height: 1.6;
+    max-width: 560px;
+  }
+  .header p strong { opacity: 1; }
+
+  /* CONTAINER */
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 24px 60px;
+  }
+
+  /* IDENTITY CARD */
+  .identity-card {
+    background: white;
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--red);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  }
+  .identity-card h2 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 20px;
+  }
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .field-row.single { grid-template-columns: 1fr; }
+  .field-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--mid);
+    margin-bottom: 6px;
+  }
+  .field-group label .req { color: var(--red); margin-left: 2px; }
+  .field-group input, .field-group select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--dark);
+    background: var(--light);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .field-group input:focus, .field-group select:focus {
+    border-color: var(--red);
+    background: white;
+  }
+
+  /* GROUP EVAL CARD */
+  .group-card {
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .group-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+
+  .group-card-header {
+    background: var(--red);
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .group-card-header .group-label {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+  }
+  .group-card-header .group-score-display {
+    font-size: 13px;
+    opacity: 0.85;
+    background: rgba(255,255,255,0.15);
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+  .group-card-header .group-score-display span {
+    font-weight: 700;
+    font-size: 16px;
+    opacity: 1;
+  }
+
+  .group-card-body { padding: 0; }
+
+  /* CRITERIA ROW */
+  .criteria-row {
+    padding: 18px 24px;
+    border-bottom: 1px solid #f0ece6;
+  }
+  .criteria-row:last-child { border-bottom: none; }
+  .criteria-top {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .criteria-info {}
+  .criteria-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 2px;
+  }
+  .criteria-weight {
+    font-size: 11px;
+    color: var(--red);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .score-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .score-btn {
+    flex: 1;
+    min-width: 68px;
+    padding: 8px 4px 6px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .score-btn input[type=radio] {
+    position: absolute;
+    opacity: 0;
+    width: 0; height: 0;
+  }
+  .score-btn .score-num {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+  .score-btn .score-label {
+    display: block;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    line-height: 1.2;
+    color: #888;
+  }
+
+  .score-btn[data-score="5"]:hover, .score-btn[data-score="5"].selected { border-color: var(--score-5); background: #edf7f2; }
+  .score-btn[data-score="5"]:hover .score-num, .score-btn[data-score="5"].selected .score-num { color: var(--score-5); }
+  .score-btn[data-score="4"]:hover, .score-btn[data-score="4"].selected { border-color: var(--score-4); background: #f0faf5; }
+  .score-btn[data-score="4"]:hover .score-num, .score-btn[data-score="4"].selected .score-num { color: var(--score-4); }
+  .score-btn[data-score="3"]:hover, .score-btn[data-score="3"].selected { border-color: #c9a227; background: #fdf8e7; }
+  .score-btn[data-score="3"]:hover .score-num, .score-btn[data-score="3"].selected .score-num { color: #b8921f; }
+  .score-btn[data-score="2"]:hover, .score-btn[data-score="2"].selected { border-color: var(--score-2); background: #fef4ec; }
+  .score-btn[data-score="2"]:hover .score-num, .score-btn[data-score="2"].selected .score-num { color: var(--score-2); }
+  .score-btn[data-score="1"]:hover, .score-btn[data-score="1"].selected { border-color: var(--score-1); background: #fdeced; }
+  .score-btn[data-score="1"]:hover .score-num, .score-btn[data-score="1"].selected .score-num { color: var(--score-1); }
+
+  /* RUBRIC HINT */
+  .rubric-hint { margin-top: 10px; min-height: 28px; }
+  .rubric-hint-text {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: #555;
+    background: #f7f4f0;
+    border-left: 3px solid #ccc;
+    padding: 6px 10px;
+    border-radius: 0 6px 6px 0;
+    transition: all 0.2s;
+    display: none;
+  }
+  .rubric-hint-text.visible { display: block; }
+  .rubric-hint-text.s5 { border-color: var(--score-5); background: #edf7f2; color: #1e4d38; }
+  .rubric-hint-text.s4 { border-color: var(--score-4); background: #f0faf5; color: #2d6a4f; }
+  .rubric-hint-text.s3 { border-color: #c9a227; background: #fdf8e7; color: #7a5c10; }
+  .rubric-hint-text.s2 { border-color: var(--score-2); background: #fef4ec; color: #9a4a10; }
+  .rubric-hint-text.s1 { border-color: var(--score-1); background: #fdeced; color: #8b1a22; }
+
+  /* SUMMARY SECTION */
+  .summary-section {
+    margin: 0 24px 20px;
+    border: 1.5px solid #e8e0f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .summary-header {
+    background: #f0ebf8;
+    color: #5a3a8a;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .req-badge {
+    background: var(--red);
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .summary-fields {
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .summary-field { display: flex; flex-direction: column; gap: 5px; }
+  .summary-field.full { grid-column: 1 / -1; }
+  .summary-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5a3a8a;
+  }
+  .summary-field label .req { color: var(--red); margin-left: 2px; }
+  .summary-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #d8ceed;
+    border-radius: 7px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--dark);
+    background: #faf8ff;
+    resize: vertical;
+    min-height: 72px;
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+  }
+  .summary-input.tall { min-height: 90px; }
+  .summary-input:focus { border-color: #7c4dbc; background: white; }
+  .summary-input.error { border-color: var(--red); background: #fff5f5; }
+
+  /* SCORE SUMMARY BAR */
+  .score-summary {
+    background: #f9f6f2;
+    border-top: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .score-summary .label { font-size: 12px; color: #888; font-weight: 500; }
+  .score-bar-wrap { flex: 1; margin: 0 16px; height: 6px; background: #e8e4de; border-radius: 3px; overflow: hidden; }
+  .score-bar { height: 100%; background: var(--red); border-radius: 3px; transition: width 0.3s ease; width: 0%; }
+  .score-total { font-size: 16px; font-weight: 700; color: var(--red); min-width: 60px; text-align: right; }
+
+  /* LEGEND */
+  .legend {
+    background: white;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+  }
+  .legend h3 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 14px;
+  }
+  .legend-items { display: flex; gap: 10px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--mid); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* PROGRESS */
+  .progress-bar-outer {
+    background: white;
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+  }
+  .progress-header { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-bottom: 10px; font-weight: 500; }
+  .progress-track { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--red), var(--red-mid)); border-radius: 4px; transition: width 0.4s ease; width: 0%; }
+
+  /* SUBMIT */
+  .submit-area { text-align: center; margin-top: 32px; }
+  .submit-btn {
+    background: var(--red);
+    color: white;
+    border: none;
+    padding: 16px 48px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    border-radius: 50px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(139,38,53,0.3);
+  }
+  .submit-btn:hover { background: var(--red-mid); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(139,38,53,0.4); }
+  .submit-btn:disabled { background: #aaa; box-shadow: none; transform: none; cursor: not-allowed; }
+  .submit-note { margin-top: 12px; font-size: 12px; color: #aaa; }
+
+  /* SPINNER */
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* SUCCESS */
+  .success-banner {
+    display: none;
+    background: #edf7f2;
+    border: 2px solid var(--score-5);
+    border-radius: 12px;
+    padding: 24px 32px;
+    text-align: center;
+    margin-top: 24px;
+  }
+  .success-banner h3 { color: var(--score-5); font-size: 20px; margin-bottom: 8px; }
+  .success-banner p { color: #2d6a4f; font-size: 14px; }
+
+  @media (max-width: 600px) {
+    .field-row { grid-template-columns: 1fr; }
+    .criteria-top { grid-template-columns: 1fr; gap: 10px; }
+    .score-btn { min-width: 52px; }
+    .score-btn .score-label { display: none; }
+    .summary-fields { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="course-tag">Management Information Systems</div>
+    <h1>Final Presentation<br>Peer Evaluation · MSF</h1>
+    <p>Please evaluate <strong>all groups except your own</strong>. Score each criterion and fill in the required summary for each group. Your participation will be recorded.</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- IDENTITY -->
+  <div class="identity-card">
+    <h2>Your Information</h2>
+    <div class="field-row">
+      <div class="field-group">
+        <label>Student ID <span class="req">*</span></label>
+        <input type="text" id="student-id" placeholder="e.g. B10901001" required>
+      </div>
+      <div class="field-group">
+        <label>Name <span class="req">*</span></label>
+        <input type="text" id="student-name" placeholder="Your full name" required>
+      </div>
+    </div>
+    <div class="field-row single">
+      <div class="field-group">
+        <label>Your Group <span class="req">*</span></label>
+        <select id="my-group" onchange="toggleOwnGroup()">
+          <option value="">— Select your group —</option>
+          <option value="1">Group 1</option>
+          <option value="2">Group 2</option>
+          <option value="3">Group 3</option>
+          <option value="4">Group 4</option>
+          <option value="5">Group 5</option>
+          <option value="6">Group 6</option>
+          <option value="7">Group 7</option>
+          <option value="8">Group 8</option>
+          <option value="9">Group 9</option>
+          <option value="10">Group 10</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <h3>Scoring Guide</h3>
+    <div class="legend-items">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--score-5)"></div> <strong>5</strong> — Excellent</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--score-4)"></div> <strong>4</strong> — Good</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e9c46a"></div> <strong>3</strong> — Satisfactory</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--score-2)"></div> <strong>2</strong> — Need Improvement</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--score-1)"></div> <strong>1</strong> — Failing</div>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-bar-outer">
+    <div class="progress-header">
+      <span>Groups evaluated</span>
+      <span id="progress-text">0 / 9 groups</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- GROUP CARDS -->
+  <div id="groups-container"></div>
+
+  <!-- SUBMIT -->
+  <div class="submit-area">
+    <button class="submit-btn" id="submit-btn" onclick="submitForm()">Submit Evaluation</button>
+    <p class="submit-note">All scoring and summary fields are required before submitting.</p>
+  </div>
+
+  <div class="success-banner" id="success-banner">
+    <h3>✅ Evaluation Submitted!</h3>
+    <p>Your responses have been recorded. Thank you for your participation.</p>
+  </div>
+
+</div>
+
+<script>
+// ─── CONFIGURATION ────────────────────────────────────────────────
+// Replace this URL with your Google Apps Script Web App URL after deployment
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+// ──────────────────────────────────────────────────────────────────
+
+const criteria = [
+  { id: 'pi',  name: 'Problem Identification',   weight: 20, rubric: {
+    5: "Accurately identifies company's current problems; thorough analysis; captures core pain points",
+    4: 'Correctly describes main problems; clear and reasonable analysis',
+    3: 'Describes basic problems, but analysis lacks depth',
+    2: 'Problem description is inaccurate or superficial',
+    1: 'Fails to identify problems or seriously misjudges situation'
+  }},
+  { id: 'se',  name: 'Solution Effectiveness',   weight: 20, rubric: {
+    5: 'Solution effectively addresses problems; concrete and feasible; significant expected outcomes',
+    4: 'Solution addresses main problems; feasible',
+    3: 'Solution is basically feasible, but limited effectiveness',
+    2: 'Solution effectiveness unclear or low feasibility',
+    1: 'Solution is ineffective or completely infeasible'
+  }},
+  { id: 'sf',  name: 'Solution Feasibility',     weight: 15, rubric: {
+    5: 'Fully considers company resources, costs, technology, and organizational conditions; comprehensive planning',
+    4: 'Considers main constraints; reasonable planning',
+    3: 'Considers some conditions, but incomplete',
+    2: 'Lacks practical considerations; unrealistic planning',
+    1: 'Completely unreasonable or ignores important constraints'
+  }},
+  { id: 'isd', name: 'IS Design',                weight: 15, rubric: {
+    5: 'Complete system architecture; clear functional modules; appropriate technology choices; demonstrates innovative thinking',
+    4: 'Reasonable system design; clear functions',
+    3: 'Basic system architecture, but lacks details',
+    2: 'System design is unclear or incomplete',
+    1: 'Lacks system design or contains major errors'
+  }},
+  { id: 'ca',  name: 'Competitiveness Analysis', weight: 10, rubric: {
+    5: 'Clearly argues how solution enhances competitiveness; links business value to strategic objectives',
+    4: 'Explains positive impact of solution on competitiveness',
+    3: 'Mentions competitiveness improvement but weak argumentation',
+    2: 'Fails to effectively link competitiveness enhancement',
+    1: 'No discussion or illogical arguments'
+  }},
+  { id: 'qa',  name: 'Q&A Response',             weight: 10, rubric: {
+    5: 'Accurately understands questions; in-depth and complete answers; demonstrates professional knowledge and adaptability',
+    4: 'Correctly answers questions; clear expression',
+    3: 'Basically answers questions, but lacks depth',
+    2: 'Unclear answers or deviates from questions',
+    1: 'Unable to answer or provides incorrect responses'
+  }},
+  { id: 'pq',  name: 'Presentation Quality',     weight: 5, rubric: {
+    5: 'Complete presentation structure; professional visual design; clear and fluent verbal expression',
+    4: 'Well-organized presentation; clear delivery',
+    3: 'Presentation is basically complete, but some content unclear',
+    2: 'Loosely organized presentation or poor delivery',
+    1: 'Chaotic presentation or serious delivery problems'
+  }},
+  { id: 'tm',  name: 'Time Management',          weight: 5, rubric: {
+    5: 'Perfect time control; well-balanced sections; finishes on time',
+    4: 'Good time control; slightly over or under time (±1 min)',
+    3: 'Acceptable time control (over or under 1-3 minutes)',
+    2: 'Significantly over or under time (3-5 minutes)',
+    1: 'Seriously over time or severely insufficient content (5+ min)'
+  }},
+];
+
+const scoreLabels = { 5: 'Excellent', 4: 'Good', 3: 'Satisfactory', 2: 'Need Impr.', 1: 'Failing' };
+const TOTAL_GROUPS = 10;
+
+function buildGroupCards() {
+  const container = document.getElementById('groups-container');
+  container.innerHTML = '';
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    const card = document.createElement('div');
+    card.className = 'group-card';
+    card.id = 'group-card-' + g;
+
+    let criteriaHTML = criteria.map(c => `
+      <div class="criteria-row">
+        <div class="criteria-top">
+          <div class="criteria-info">
+            <div class="criteria-name">${c.name}</div>
+            <div class="criteria-weight">${c.weight}%</div>
+          </div>
+          <div class="score-options">
+            ${[5,4,3,2,1].map(s => `
+              <label class="score-btn" data-score="${s}" data-group="${g}" data-crit="${c.id}" onclick="selectScore(this,${g},'${c.id}',${s})">
+                <input type="radio" name="g${g}_${c.id}" value="${s}">
+                <span class="score-num">${s}</span>
+                <span class="score-label">${scoreLabels[s]}</span>
+              </label>
+            `).join('')}
+          </div>
+        </div>
+        <div class="rubric-hint">
+          <div class="rubric-hint-text" id="hint-${g}-${c.id}"></div>
+        </div>
+      </div>
+    `).join('');
+
+    card.innerHTML = `
+      <div class="group-card-header">
+        <span class="group-label">Group ${g}</span>
+        <span class="group-score-display">Total: <span id="total-${g}">—</span> / 100</span>
+      </div>
+      <div class="group-card-body">
+        ${criteriaHTML}
+        <div class="summary-section">
+          <div class="summary-header">
+            📝 Group Summary
+            <span class="req-badge">Required</span>
+          </div>
+          <div class="summary-fields">
+            <div class="summary-field">
+              <label>What problem did this group identify? <span class="req">*</span></label>
+              <textarea id="sum-problem-${g}" class="summary-input" placeholder="Briefly describe the company problem they addressed…"></textarea>
+            </div>
+            <div class="summary-field">
+              <label>What IS solution did they propose? <span class="req">*</span></label>
+              <textarea id="sum-solution-${g}" class="summary-input" placeholder="Briefly describe their proposed solution…"></textarea>
+            </div>
+            <div class="summary-field">
+              <label>One strength of this presentation <span class="req">*</span></label>
+              <textarea id="sum-strength-${g}" class="summary-input" placeholder="What did they do particularly well?"></textarea>
+            </div>
+            <div class="summary-field">
+              <label>One suggestion for improvement <span class="req">*</span></label>
+              <textarea id="sum-improve-${g}" class="summary-input" placeholder="What could they do better?"></textarea>
+            </div>
+            <div class="summary-field full">
+              <label>Overall comments <span class="req">*</span></label>
+              <textarea id="comment-${g}" class="summary-input tall" placeholder="Any other observations or feedback for this group…"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="score-summary">
+          <span class="label">Score</span>
+          <div class="score-bar-wrap"><div class="score-bar" id="bar-${g}"></div></div>
+          <span class="score-total" id="score-total-${g}">0 / 100</span>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+  }
+}
+
+function selectScore(el, group, critId, score) {
+  document.querySelectorAll('.score-btn[data-group="' + group + '"][data-crit="' + critId + '"]')
+    .forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  const crit = criteria.find(c => c.id === critId);
+  const hintEl = document.getElementById('hint-' + group + '-' + critId);
+  if (hintEl && crit) {
+    hintEl.textContent = '★ ' + scoreLabels[score] + ': ' + crit.rubric[score];
+    hintEl.className = 'rubric-hint-text visible s' + score;
+  }
+  updateGroupTotal(group);
+  updateProgress();
+}
+
+function updateGroupTotal(group) {
+  let total = 0, filled = 0;
+  criteria.forEach(c => {
+    const sel = document.querySelector('.score-btn.selected[data-group="' + group + '"][data-crit="' + c.id + '"]');
+    if (sel) { total += parseInt(sel.dataset.score) * c.weight / 5; filled++; }
+  });
+  document.getElementById('total-' + group).textContent = filled === criteria.length ? Math.round(total) : '—';
+  document.getElementById('score-total-' + group).textContent = filled === criteria.length ? Math.round(total) + ' / 100' : filled + '/' + criteria.length + ' done';
+  document.getElementById('bar-' + group).style.width = total + '%';
+}
+
+function updateProgress() {
+  const myGroup = document.getElementById('my-group').value;
+  let completed = 0;
+  let total = myGroup ? TOTAL_GROUPS - 1 : TOTAL_GROUPS;
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    if (myGroup && g === parseInt(myGroup)) continue;
+    const scoredAll = criteria.every(c =>
+      document.querySelector('.score-btn.selected[data-group="' + g + '"][data-crit="' + c.id + '"]')
+    );
+    const summaryFilled = ['sum-problem','sum-solution','sum-strength','sum-improve','comment']
+      .every(f => (document.getElementById(f + '-' + g) || {}).value?.trim());
+    if (scoredAll && summaryFilled) completed++;
+  }
+  document.getElementById('progress-text').textContent = completed + ' / ' + total + ' groups';
+  document.getElementById('progress-fill').style.width = total > 0 ? (completed/total*100) + '%' : '0%';
+}
+
+// Attach live validation on summary fields
+function attachSummaryListeners() {
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    ['sum-problem','sum-solution','sum-strength','sum-improve','comment'].forEach(f => {
+      const el = document.getElementById(f + '-' + g);
+      if (el) el.addEventListener('input', updateProgress);
+    });
+  }
+}
+
+function toggleOwnGroup() {
+  const myGroup = parseInt(document.getElementById('my-group').value);
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    const card = document.getElementById('group-card-' + g);
+    if (g === myGroup) {
+      card.style.opacity = '0.35';
+      card.style.pointerEvents = 'none';
+      card.querySelector('.group-card-header').style.background = '#aaa';
+      card.querySelector('.group-label').textContent = 'Group ' + g + ' (Your Group — Skip)';
+    } else {
+      card.style.opacity = '1';
+      card.style.pointerEvents = '';
+      card.querySelector('.group-card-header').style.background = '';
+      card.querySelector('.group-label').textContent = 'Group ' + g;
+    }
+  }
+  updateProgress();
+}
+
+function submitForm() {
+  const sid = document.getElementById('student-id').value.trim();
+  const sname = document.getElementById('student-name').value.trim();
+  const myGroup = document.getElementById('my-group').value;
+
+  if (!sid || !sname || !myGroup) {
+    alert('Please fill in your Student ID, Name, and Group before submitting.');
+    return;
+  }
+
+  // Validate all groups
+  let missingScore = [], missingSummary = [];
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    if (g === parseInt(myGroup)) continue;
+    const scoredAll = criteria.every(c =>
+      document.querySelector('.score-btn.selected[data-group="' + g + '"][data-crit="' + c.id + '"]')
+    );
+    if (!scoredAll) missingScore.push('Group ' + g);
+
+    const summaryFields = ['sum-problem','sum-solution','sum-strength','sum-improve','comment'];
+    const summaryOk = summaryFields.every(f => {
+      const el = document.getElementById(f + '-' + g);
+      const ok = el && el.value.trim().length > 0;
+      if (!ok && el) el.classList.add('error');
+      else if (el) el.classList.remove('error');
+      return ok;
+    });
+    if (!summaryOk) missingSummary.push('Group ' + g);
+  }
+
+  if (missingScore.length > 0) {
+    alert('Please complete all scores for: ' + missingScore.join(', '));
+    return;
+  }
+  if (missingSummary.length > 0) {
+    alert('Please fill in all summary fields for: ' + missingSummary.join(', '));
+    const firstG = parseInt(missingSummary[0].split(' ')[1]);
+    document.getElementById('group-card-' + firstG).scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  // Build payload
+  const payload = {
+    timestamp: new Date().toISOString(),
+    studentId: sid,
+    studentName: sname,
+    myGroup: myGroup,
+    evaluations: []
+  };
+
+  for (let g = 1; g <= TOTAL_GROUPS; g++) {
+    if (g === parseInt(myGroup)) continue;
+    const ev = { group: g, scores: {}, total: 0 };
+    criteria.forEach(c => {
+      const sel = document.querySelector('.score-btn.selected[data-group="' + g + '"][data-crit="' + c.id + '"]');
+      const score = sel ? parseInt(sel.dataset.score) : 0;
+      ev.scores[c.id] = score;
+      ev.total += score * c.weight / 5;
+    });
+    ev.total = Math.round(ev.total);
+    ev.summary = {
+      problem:  document.getElementById('sum-problem-' + g).value.trim(),
+      solution: document.getElementById('sum-solution-' + g).value.trim(),
+      strength: document.getElementById('sum-strength-' + g).value.trim(),
+      improve:  document.getElementById('sum-improve-' + g).value.trim(),
+      comment:  document.getElementById('comment-' + g).value.trim()
+    };
+    payload.evaluations.push(ev);
+  }
+
+  // Submit to Google Apps Script
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Submitting…';
+
+  if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    // Demo mode — just show success
+    setTimeout(() => {
+      btn.style.display = 'none';
+      document.getElementById('success-banner').style.display = 'block';
+      console.log('Payload (demo):', JSON.stringify(payload, null, 2));
+    }, 1000);
+    return;
+  }
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(() => {
+    btn.style.display = 'none';
+    document.getElementById('success-banner').style.display = 'block';
+    document.getElementById('success-banner').scrollIntoView({ behavior: 'smooth' });
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btn.textContent = 'Submit Evaluation';
+    alert('Submission failed. Please try again or contact your instructor.\n\n' + err.message);
+  });
+}
+
+// Init
+buildGroupCards();
+attachSummaryListeners();
+</script>
+</body>
+</html>

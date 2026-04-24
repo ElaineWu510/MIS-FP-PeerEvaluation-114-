@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Dashboard — MIS Peer Evaluation</title>
+<title>Admin Dashboard — IM Peer Evaluation</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -150,8 +150,8 @@ tr:hover td{background:#fafaf8}
 <div class="header">
   <div class="header-inner">
     <div>
-      <h1>Admin Dashboard</h1>
-      <p>MIS Final Presentation — Peer Evaluation</p>
+      <h1>Admin Dashboard · IM</h1>
+      <p>IM Final Presentation — Peer Evaluation</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-outline" onclick="loadData()">↻ Refresh</button>
@@ -199,7 +199,6 @@ tr:hover td{background:#fafaf8}
   <div class="section" id="sec-reports">
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:12px;flex-wrap:wrap">
       <button class="btn btn-blue" onclick="downloadGroupPDF(selectedReportGroup)">⬇ Download This Group PDF</button>
-      <button class="btn btn-green" onclick="downloadAllGroupPDFs()">⬇ Download All Group PDFs</button>
     </div>
     <div class="group-selector" id="report-group-selector"></div>
     <div id="report-content"><div class="loading"><div class="spin"></div><br>Loading…</div></div>
@@ -834,25 +833,6 @@ async function downloadGroupPDF(g) {
     pdf.save(`Group_${g}_Evaluation_Report.pdf`);
   } catch (e) {
     alert('PDF generation failed: ' + e.message);
-  }
-}
-
-async function downloadAllGroupPDFs() {
-  // Produces one combined PDF with a cover page per group.
-  const btn = event?.target;
-  const origText = btn?.textContent;
-  try {
-    if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-    for (let g = 1; g <= TOTAL_GROUPS; g++) {
-      await renderGroupToPDF(g, pdf, g === 1);
-    }
-    pdf.save('All_Group_Evaluation_Reports.pdf');
-  } catch (e) {
-    alert('PDF generation failed: ' + e.message);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = origText; }
   }
 }
 
